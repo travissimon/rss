@@ -128,11 +128,11 @@ func (wr *FeedWriter) ExecuteData(w http.ResponseWriter, r *http.Request, data *
 		err = FeedTemplates[5].Execute(w, entry)
 		handleFeedError(err)
 		fmt.Fprint(w, FeedHtml[7])
-		err = FeedTemplates[6].Execute(w, data)
+		err = FeedTemplates[6].Execute(w, entry)
 		handleFeedError(err)
 		if entry.Url != "" {
 			fmt.Fprint(w, FeedHtml[8])
-			err = FeedTemplates[7].Execute(w, data)
+			err = FeedTemplates[7].Execute(w, entry)
 			handleFeedError(err)
 		}
 		fmt.Fprint(w, FeedHtml[9])

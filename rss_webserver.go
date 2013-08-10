@@ -19,7 +19,11 @@ func main() {
 		return
 	}
 
-	startHttp()
+	if hostname, _ := os.Hostname(); hostname == "Alphonzo" {
+		startHttp()
+	} else {
+		fmt.Printf("%s is not local dev, so doing nothing. I should really make configs, or something", hostname)
+	}
 }
 
 func indexController(ctx *mvc.WebContext, params url.Values) mvc.ControllerResult {

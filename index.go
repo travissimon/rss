@@ -9,9 +9,9 @@ import (
 	"net/http"
 )
 
-func NewIndexWriter() *IndexWriter {
+func NewIndexWriter() (*IndexWriter) {
 	wr := &IndexWriter{}
-
+	
 	for idx, pattern := range IndexTemplatePatterns {
 		tmpl, err := template.New("IndexTemplates" + string(idx)).Parse(pattern)
 		if err != nil {
@@ -32,7 +32,7 @@ func (wr *IndexWriter) SetData(data interface{}) {
 }
 
 var IndexHtml = [...]string{
-	`<html>
+`<html>
 	<head>
 		<title>Feed listing</title>
 	</head>
@@ -47,10 +47,10 @@ var IndexHtml = [...]string{
 			<h1>Feeds</h1>
 			<ul>
 				`,
-	`
+				`
 				<li>
 					`,
-	`
+					`
 				</li>
 			</ul>
 		</div>
@@ -78,13 +78,7 @@ func (wr *IndexWriter) ExecuteData(w http.ResponseWriter, r *http.Request, data 
 		handleIndexError(err)
 	}
 	fmt.Fprint(w, IndexHtml[2])
-	if err != nil {
-		err = nil
-	}
-}
+if err != nil {err = nil}}
 
 func handleIndexError(err error) {
-	if err != nil {
-		fmt.Println(err)
-	}
-}
+	if err != nil {fmt.Println(err)}}
