@@ -6,12 +6,11 @@ import (
 	"os"
 )
 
-var database = NewRssDatabase()
-
 func main() {
 	if len(os.Args) == 2 {
 		filepath := os.Args[1]
-		parseFile(filepath)
+		// parseFile(filepath)
+		fmt.Printf("Should have imported %s\n", filepath)
 		return
 	}
 }
@@ -24,7 +23,7 @@ func parseFile(filepath string) {
 		panic(err)
 	}
 
-	db := NewRssDatabase()
+	db := NewRssDatabase("rss", "travis", "")
 
 	parser := NewParser(filepath, string(fileContents))
 	go parser.Parse()

@@ -2,6 +2,7 @@ package rss
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/ziutek/mymysql/godrv"
 	_ "github.com/ziutek/mymysql/mysql"
 	_ "github.com/ziutek/mymysql/thrsafe"
@@ -26,9 +27,9 @@ func (rss *RssDatabase) panicOnError(err error) {
 	}
 }
 
-func NewRssDatabase() *RssDatabase {
+func NewRssDatabase(database, username, password string) *RssDatabase {
 	rss := new(RssDatabase)
-	db, err := sql.Open("mymysql", "rss/rss/rss")
+	db, err := sql.Open("mymysql", fmt.Sprintf("%s/%s/%s", database, username, password))
 	rss.panicOnError(err)
 	rss.db = db
 

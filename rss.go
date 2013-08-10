@@ -51,9 +51,9 @@ type RssEngine struct {
 	db *RssDatabase
 }
 
-func NewRssEngine() *RssEngine {
+func NewRssEngine(database, username, password string) *RssEngine {
 	rss := new(RssEngine)
-	rss.db = NewRssDatabase()
+	rss.db = NewRssDatabase(database, username, password)
 	return rss
 }
 
