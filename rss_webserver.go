@@ -1,4 +1,4 @@
-package main
+package rss
 
 import (
 	"fmt"
@@ -23,25 +23,33 @@ func main() {
 }
 
 func indexController(ctx *mvc.WebContext, params url.Values) mvc.ControllerResult {
-	feeds := database.getAllFeeds()
-	writer := NewIndexWriter(feeds)
+	feeds, err := database.getAllFeeds()
+	if err != nil {
+		fmt.Println(err)
+	}
+	writer := NewIndexWriter()
 	return mvc.Haml(writer, feeds, ctx)
 }
 
 func entryController(ctx *mvc.WebContext, params url.Values) mvc.ControllerResult {
 	idStr := params.Get("id")
-	id64, err := strconv.ParseInt(idStr, 10, 32)
+	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
 		panic(err)
 	}
-	id := int(id64)
-	feed := database.getFeedById(id)
-	entries := database.getEntriesByFeedId(id)
+	feed, err := database.getFeedById(id)
+	if err != nil {
+		panic(err)
+	}
+	entries, err := database.getEntriesByFeedId(feed.Id)
+	if err != nil {
+		panic(err)
+	}
 	entryList := new(EntryList)
 	entryList.feed = feed
 	entryList.entries = entries
 
-	writer := NewFeedWriter(entryList)
+	writer := NewFeedWriter()
 	return mvc.Haml(writer, entryList, ctx)
 }
 
@@ -71,7 +79,7 @@ func parseFile(filepath string) {
 	go parser.Parse()
 
 	entries := make([]Entry, 0, 20)
-	feedId := -1
+	feedId := int64(-1)
 	feedOpen, entryOpen := true, true
 parseLoop:
 	for {
@@ -81,14 +89,15 @@ parseLoop:
 		select {
 		case feed, feedOk := <-parser.feed:
 			if feedOk {
-				fmt.Printf("feed: %v\n", feed.Title)
-				feedId = db.insertFeed(&feed)
+				feedId, err = db.insertFeed(&feed)
+				if err != nil {
+					panic(err)
+				}
 			} else {
 				feedOpen = false
 			}
 		case entry, entryOk := <-parser.entry:
 			if entryOk {
-				fmt.Printf("entry: %v\n", entry.Title)
 				entries = append(entries, entry)
 			} else {
 				entryOpen = false

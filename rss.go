@@ -1,16 +1,19 @@
-package main
+package rss
 
-import ()
+import (
+	"fmt"
+	"time"
+)
 
 type Feed struct {
-	Id          int
+	Id          int64
 	Feed        string
 	Title       string
 	Link        string
 	Subtitle    string
 	Copyright   string
 	Author      string
-	PublishDate string
+	PublishDate time.Time
 	Category    string
 	Generator   string
 	Logo        string
@@ -18,13 +21,13 @@ type Feed struct {
 }
 
 type Entry struct {
-	Id          int
-	FeedId      int
+	Id          int64
+	FeedId      int64
 	Title       string
 	Link        string
 	Subtitle    string
 	Guid        string
-	UpdatedDate string
+	UpdatedDate time.Time
 	Summary     string
 	Content     string
 	Source      string
@@ -42,4 +45,35 @@ func (e *Entry) String() string {
 type EntryList struct {
 	feed    *Feed
 	entries []*Entry
+}
+
+type RssEngine struct {
+	db *RssDatabase
+}
+
+func NewRssEngine() *RssEngine {
+	rss := new(RssEngine)
+	rss.db = NewRssDatabase()
+	return rss
+}
+
+func (rss *RssEngine) GetFeedsForUser(userId int64) (feeds []*Feed, err error) {
+	feeds, err = rss.db.getFeedsForUser(userId)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return
+}
+
+// GetEntriesForFeed gets all entries for a feed.
+func (rss *RssEngine) GetEntriesForFeed(feedId int64) (entries []*Entry, err error) {
+	entries, err = rss.db.getEntriesByFeedId(feedId)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return
 }

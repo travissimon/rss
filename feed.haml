@@ -1,6 +1,8 @@
 @import (
 )
 
+@package: rss
+
 @data_type *EntryList
 
 %html
@@ -46,6 +48,6 @@
 
           %p= "<a href='", entry.Link, "'>Full article</a>"
           - if entry.Url != "" {
-            %p= "<a href='" + entry.Url + "'>Download</a>"
+            %p= "<a href='", entry.Url, "'>Download</a>"
           - }
         - }

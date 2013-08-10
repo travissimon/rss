@@ -1,23 +1,34 @@
-package main
+package rss
 
 // THIS IS A GENERATED FILE, EDITS WILL BE OVERWRITTEN
 // EDIT THE .haml FILE INSTEAD
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 )
 
-func NewFeedWriter(data *EntryList) (*FeedWriter) {
-	wr := &FeedWriter {
-		data: data,
-	}
+func NewFeedWriter() (*FeedWriter) {
+	wr := &FeedWriter{}
 	
+	for idx, pattern := range FeedTemplatePatterns {
+		tmpl, err := template.New("FeedTemplates" + string(idx)).Parse(pattern)
+		if err != nil {
+			fmt.Errorf("Could not parse template: %d", idx)
+			panic(err)
+		}
+		FeedTemplates = append(FeedTemplates, tmpl)
+	}
 	return wr
 }
 
 type FeedWriter struct {
 	data *EntryList
+}
+
+func (wr *FeedWriter) SetData(data interface{}) {
+	wr.data = data.(*EntryList)
 }
 
 var FeedHtml = [...]string{
@@ -64,14 +75,10 @@ var FeedHtml = [...]string{
 					`,
 					`
 				</p>
-				`,
-				`
 				<p>
 					`,
 					`
 				</p>
-				`,
-				`
 				`,
 				`
 			</div>
@@ -81,33 +88,57 @@ var FeedHtml = [...]string{
 `,
 }
 
+var FeedTemplatePatterns = []string{
+	`{{.feed.Title}}`,
+	`{{.feed.Title}}`,
+	`{{.feed.Subtitle}}`,
+	`{{.Title}}`,
+	`{{.Subtitle}}`,
+	`{{.Summary}}`,
+	`<a href='{{.Link}}'>Full article</a>`,
+	`<a href='{{.Url}}'>Download</a>`,
+}
+
+var FeedTemplates = make([]*template.Template, 0, len(FeedTemplatePatterns))
+
 func (wr FeedWriter) Execute(w http.ResponseWriter, r *http.Request) {
 	wr.ExecuteData(w, r, wr.data)
 }
 
 func (wr *FeedWriter) ExecuteData(w http.ResponseWriter, r *http.Request, data *EntryList) {
+	var err error = nil
 	fmt.Fprint(w, FeedHtml[0])
-	fmt.Fprint(w, data.feed.Title)
+	err = FeedTemplates[0].Execute(w, data)
+	handleFeedError(err)
 	fmt.Fprint(w, FeedHtml[1])
-	fmt.Fprint(w, data.feed.Title)
+	err = FeedTemplates[1].Execute(w, data)
+	handleFeedError(err)
 	fmt.Fprint(w, FeedHtml[2])
-	fmt.Fprint(w, data.feed.Subtitle)
+	err = FeedTemplates[2].Execute(w, data)
+	handleFeedError(err)
 	fmt.Fprint(w, FeedHtml[3])
 	for _, entry := range data.entries {
 		fmt.Fprint(w, FeedHtml[4])
-		fmt.Fprint(w, entry.Title)
+		err = FeedTemplates[3].Execute(w, entry)
+		handleFeedError(err)
 		fmt.Fprint(w, FeedHtml[5])
-		fmt.Fprint(w, entry.Subtitle)
+		err = FeedTemplates[4].Execute(w, entry)
+		handleFeedError(err)
 		fmt.Fprint(w, FeedHtml[6])
-		fmt.Fprint(w, entry.Summary)
+		err = FeedTemplates[5].Execute(w, entry)
+		handleFeedError(err)
 		fmt.Fprint(w, FeedHtml[7])
-		fmt.Fprint(w, "<a href='", entry.Link, "'>Full article</a>")
-		fmt.Fprint(w, FeedHtml[8])
+		err = FeedTemplates[6].Execute(w, data)
+		handleFeedError(err)
 		if entry.Url != "" {
-			fmt.Fprint(w, FeedHtml[9])
-			fmt.Fprint(w, "<a href='" + entry.Url + "'>Download</a>")
-			fmt.Fprint(w, FeedHtml[10])
+			fmt.Fprint(w, FeedHtml[8])
+			err = FeedTemplates[7].Execute(w, data)
+			handleFeedError(err)
 		}
-		fmt.Fprint(w, FeedHtml[11])
+		fmt.Fprint(w, FeedHtml[9])
 	}
-}
+	fmt.Fprint(w, FeedHtml[10])
+if err != nil {err = nil}}
+
+func handleFeedError(err error) {
+	if err != nil {fmt.Println(err)}}

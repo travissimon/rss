@@ -1,7 +1,8 @@
-package main
+package rss
 
 import (
 	"fmt"
+	"html"
 	"strings"
 	"time"
 )
@@ -43,10 +44,11 @@ func NewParser(name, input string) *RssParser {
 			"updatedDate": handleEntryUpdatedDate,
 			"Summary":     handleEntrySummary,
 			"description": handleEntrySummary,
-			"content":     handleEntryContent,
-			"source":      handleEntrySource,
-			"comments":    handleEntryComments,
-			"enclosure":   handleEntryEnclosure,
+			"encoded":     handleEntryEncoded,
+			// "content":     handleEntryContent,
+			"source":    handleEntrySource,
+			"comments":  handleEntryComments,
+			"enclosure": handleEntryEnclosure,
 		},
 	}
 }
@@ -138,7 +140,11 @@ func handleFeedAuthor(l *lexer, feed *Feed) {
 
 func handleFeedPubDate(l *lexer, feed *Feed) {
 	lexeme := l.nextItem()
-	feed.PublishDate = lexeme.val
+	var err error
+	feed.PublishDate, err = parseDate(lexeme.val)
+	if err != nil {
+		fmt.Println(err)
+	}
 	skipUntilType(l, itemCloseTag)
 }
 
@@ -224,7 +230,11 @@ func handleEntryGuid(l *lexer, entry *Entry) {
 
 func handleEntryUpdatedDate(l *lexer, entry *Entry) {
 	lexeme := l.nextItem()
-	entry.UpdatedDate = lexeme.val
+	var err error
+	entry.UpdatedDate, err = parseDate(lexeme.val)
+	if err != nil {
+		fmt.Println(err)
+	}
 	skipUntilType(l, itemCloseTag)
 }
 
@@ -234,13 +244,19 @@ func handleEntrySummary(l *lexer, entry *Entry) {
 	skipUntilType(l, itemCloseTag)
 }
 
-func handleEntryContent(l *lexer, entry *Entry) {
+func handleEntryEncoded(l *lexer, entry *Entry) {
+	lexeme := l.nextItem()
+	entry.Summary = html.UnescapeString(lexeme.val)
+	skipUntilType(l, itemCloseTag)
+}
+
+/*func handleEntryContent(l *lexer, entry *Entry) {
 	for lexeme := l.nextItem(); lexeme.typ != itemCloseTag; lexeme = l.nextItem() {
 		if lexeme.typ == itemText {
 			entry.Content = lexeme.val
 		}
 	}
-}
+}*/
 
 func handleEntrySource(l *lexer, entry *Entry) {
 	lexeme := l.nextItem()

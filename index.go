@@ -1,18 +1,25 @@
-package main
+package rss
 
 // THIS IS A GENERATED FILE, EDITS WILL BE OVERWRITTEN
 // EDIT THE .haml FILE INSTEAD
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 )
 
-func NewIndexWriter(data []*Feed) (*IndexWriter) {
-	wr := &IndexWriter {
-		data: data,
+func NewIndexWriter() *IndexWriter {
+	wr := &IndexWriter{}
+
+	for idx, pattern := range IndexTemplatePatterns {
+		tmpl, err := template.New("IndexTemplates" + string(idx)).Parse(pattern)
+		if err != nil {
+			fmt.Errorf("Could not parse template: %d", idx)
+			panic(err)
+		}
+		IndexTemplates = append(IndexTemplates, tmpl)
 	}
-	
 	return wr
 }
 
@@ -20,8 +27,12 @@ type IndexWriter struct {
 	data []*Feed
 }
 
+func (wr *IndexWriter) SetData(data interface{}) {
+	wr.data = data.([]*Feed)
+}
+
 var IndexHtml = [...]string{
-`<html>
+	`<html>
 	<head>
 		<title>Feed listing</title>
 	</head>
@@ -36,13 +47,11 @@ var IndexHtml = [...]string{
 			<h1>Feeds</h1>
 			<ul>
 				`,
-				`
+	`
 				<li>
 					`,
-					`
+	`
 				</li>
-				`,
-				`
 			</ul>
 		</div>
 	</body>
@@ -50,15 +59,32 @@ var IndexHtml = [...]string{
 `,
 }
 
+var IndexTemplatePatterns = []string{
+	`<a href='/feed/{{.Id}}'>{{.Title}}</a>`,
+}
+
+var IndexTemplates = make([]*template.Template, 0, len(IndexTemplatePatterns))
+
 func (wr IndexWriter) Execute(w http.ResponseWriter, r *http.Request) {
 	wr.ExecuteData(w, r, wr.data)
 }
 
 func (wr *IndexWriter) ExecuteData(w http.ResponseWriter, r *http.Request, data []*Feed) {
+	var err error = nil
 	fmt.Fprint(w, IndexHtml[0])
 	for _, feed := range data {
 		fmt.Fprint(w, IndexHtml[1])
-		fmt.Fprint(w, "<a href='/feed/", feed.Id, "'>", feed.Title, "</a>")
-		fmt.Fprint(w, IndexHtml[2])
+		err = IndexTemplates[0].Execute(w, feed)
+		handleIndexError(err)
+	}
+	fmt.Fprint(w, IndexHtml[2])
+	if err != nil {
+		err = nil
+	}
+}
+
+func handleIndexError(err error) {
+	if err != nil {
+		fmt.Println(err)
 	}
 }
