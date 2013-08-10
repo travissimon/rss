@@ -12,6 +12,7 @@ import (
 
 var database = NewRssDatabase()
 
+/*
 func main() {
 	if len(os.Args) == 2 {
 		filepath := os.Args[1]
@@ -25,6 +26,7 @@ func main() {
 		fmt.Printf("%s is not local dev, so doing nothing. I should really make configs, or something", hostname)
 	}
 }
+*/
 
 func indexController(ctx *mvc.WebContext, params url.Values) mvc.ControllerResult {
 	feeds, err := database.getAllFeeds()
