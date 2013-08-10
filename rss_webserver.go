@@ -2,72 +2,18 @@ package rss
 
 import (
 	"fmt"
-	"github.com/travissimon/go-mvc"
 	"io/ioutil"
-	"net/http"
-	"net/url"
-	"strconv"
+	"os"
 )
 
 var database = NewRssDatabase()
 
-/*
 func main() {
 	if len(os.Args) == 2 {
 		filepath := os.Args[1]
 		parseFile(filepath)
 		return
 	}
-
-	if hostname, _ := os.Hostname(); hostname == "Alphonzo" {
-		startHttp()
-	} else {
-		fmt.Printf("%s is not local dev, so doing nothing. I should really make configs, or something", hostname)
-	}
-}
-*/
-
-func indexController(ctx *mvc.WebContext, params url.Values) mvc.ControllerResult {
-	feeds, err := database.getAllFeeds()
-	if err != nil {
-		fmt.Println(err)
-	}
-	writer := NewIndexWriter()
-	return mvc.Haml(writer, feeds, ctx)
-}
-
-func entryController(ctx *mvc.WebContext, params url.Values) mvc.ControllerResult {
-	idStr := params.Get("id")
-	id, err := strconv.ParseUint(idStr, 10, 64)
-	if err != nil {
-		panic(err)
-	}
-	feed, err := database.getFeedById(id)
-	if err != nil {
-		panic(err)
-	}
-	entries, err := database.getEntriesByFeedId(feed.Id)
-	if err != nil {
-		panic(err)
-	}
-	entryList := new(EntryList)
-	entryList.feed = feed
-	entryList.entries = entries
-
-	writer := NewFeedWriter()
-	return mvc.Haml(writer, entryList, ctx)
-}
-
-func startHttp() {
-	url := "localhost:8080"
-	fmt.Printf("Listenting on http://%s\n", url)
-
-	handler := mvc.NewMvcHandler()
-	handler.AddRoute("Homepage", "/", mvc.GET, indexController)
-	handler.AddRoute("Feed", "/feed/{id}", mvc.GET, entryController)
-
-	http.Handle("/", handler)
-	http.ListenAndServe(url, nil)
 }
 
 func parseFile(filepath string) {
