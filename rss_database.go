@@ -19,6 +19,8 @@ type RssDatabase struct {
 	getFeedByIdStmt        *sql.Stmt
 	insertEntryStmt        *sql.Stmt
 	getEntriesByFeedIdStmt *sql.Stmt
+	isUserSubscribedToFeed *sql.Stmt
+	getFeedIdByUrl         *sql.Stmt
 }
 
 func (rss *RssDatabase) panicOnError(err error) {
@@ -61,6 +63,14 @@ func NewRssDatabase(database, username, password string) *RssDatabase {
 	rss.panicOnError(err)
 	rss.getEntriesByFeedIdStmt = entriesByFeed
 
+	feedByUrl, err := db.Prepare(getFeedIdByUrlSQL)
+	rss.panicOnError(err)
+	rss.getFeedIdByUrl = feedByUrl
+
+	isSubscribed, err := db.Prepare(isUserSubscribedToFeedSQL)
+	rss.panicOnError(err)
+	rss.isUserSubscribedToFeed = isSubscribed
+
 	return rss
 }
 
@@ -97,6 +107,7 @@ func (rss *RssDatabase) getAllFeeds() (feeds []*Feed, err error) {
 		feed := new(Feed)
 		err = rows.Scan(
 			&feed.Id,
+			&feed.Url,
 			&feed.Title,
 			&feed.Link,
 			&feed.Subtitle,
@@ -127,6 +138,7 @@ func (rss *RssDatabase) getFeedsForUser(userId int64) (feeds []*Feed, err error)
 		feed := new(Feed)
 		err = rows.Scan(
 			&feed.Id,
+			&feed.Url,
 			&feed.Title,
 			&feed.Link,
 			&feed.Subtitle,
@@ -154,6 +166,7 @@ func (rss *RssDatabase) AddSubscription(userId, feedId uint64, isRead bool) erro
 func (rss *RssDatabase) insertFeed(feed *Feed) (id int64, err error) {
 	res, err := rss.insertFeedStmt.Exec(
 		feed.Id,
+		feed.Url,
 		feed.Title,
 		feed.Link,
 		feed.Subtitle,
@@ -175,6 +188,7 @@ func (rss *RssDatabase) getFeedById(id uint64) (feed *Feed, err error) {
 	f := new(Feed)
 	err = rows.Scan(
 		&f.Id,
+		&f.Url,
 		&f.Title,
 		&f.Link,
 		&f.Subtitle,
@@ -256,9 +270,31 @@ func (rss *RssDatabase) getEntriesByFeedId(feedId int64) (entries []*Entry, err 
 	return entries, nil
 }
 
+func (rss *RssDatabase) getFeedStatusForUser(userId int64, feedUrl string) (feedExists, subscriptionExists bool) {
+	feedExists = false
+	subscriptionExists = false
+
+	_, err := rss.GetFeedIdByUrl(feedUrl)
+
+	// presence of an error means there was no row
+	feedExists = (err == nil)
+
+	var rowId int64
+	err = rss.isUserSubscribedToFeed.QueryRow(userId, feedUrl).Scan(&rowId)
+	subscriptionExists = (err == nil)
+
+	return
+}
+
+func (rss *RssDatabase) GetFeedIdByUrl(feedUrl string) (id int64, err error) {
+	err = rss.getFeedIdByUrl.QueryRow(feedUrl).Scan(&id)
+	return
+}
+
 var getAllFeedsSQL string = `
 SELECT
   Id,
+  Url,
   Title,
   Link,
   Subtitle,
@@ -272,9 +308,10 @@ FROM rss.Feed
 ORDER BY Title
 ;`
 
-var getFeedsByUserIdSQL string = `
+var getFeedByUrlSQL string = `
 SELECT
   Id,
+  Url,
   Title,
   Link,
   Subtitle,
@@ -285,8 +322,8 @@ SELECT
   Logo,
   Icon
 FROM rss.Feed
-ORDER BY Title
-;`
+WHERE Url = ? 
+`
 
 var insertSubscriptionSQL string = `
 INSERT INTO rss.Subscription (
@@ -302,6 +339,7 @@ INSERT INTO rss.Subscription (
 var insertFeedSQL string = `
 INSERT INTO rss.Feed (
   Id,
+  Url,
   Title,
   Link,
   Subtitle,
@@ -321,12 +359,14 @@ INSERT INTO rss.Feed (
   ?,
   ?,
   ?,
+  ?,
   ?
 );`
 
 var getFeedByIdSQL string = `
 SELECT
   Id,
+  Url,
   Title,
   Link,
   Subtitle,
@@ -399,6 +439,7 @@ WHERE FeedId = ?
 var getFeedsForUserId string = `
 SELECT
   feed.Id,
+  feed.Url,
   feed.Title,
   feed.Link,
   feed.Subtitle,
@@ -414,3 +455,19 @@ FROM rss.Subscription sub
 WHERE sub.UserId = ?
 ORDER BY feed.Title
 ;`
+
+var isUserSubscribedToFeedSQL string = `
+SELECT
+  feed.Id
+FROM rss.Subscription sub
+  INNER JOIN rss.Feed feed
+    ON sub.FeedId = feed.Id
+WHERE sub.UserId = ?
+AND feed.Url = ?
+;`
+
+var getFeedIdByUrlSQL string = `
+SELECT Id
+FROM rss.Feed
+WHERE Url = ?
+`

@@ -7,6 +7,7 @@ import (
 
 type Feed struct {
 	Id          int64
+	Url         string
 	Feed        string
 	Title       string
 	Link        string
@@ -76,4 +77,28 @@ func (rss *RssEngine) GetEntriesForFeed(feedId int64) (entries []*Entry, err err
 	}
 
 	return
+}
+
+func (rss *RssEngine) AddFeedForUser(userId int64, feedUrl string) (feed *Feed, err error) {
+	feedExists, subscribed := rss.db.getFeedStatusForUser(userId, feedUrl)
+
+	fmt.Printf("User: %v, feedUrl: %v\n", userId, feedUrl)
+	fmt.Printf("feed exists: %v, subscribed: %v\n", feedExists, subscribed)
+
+	if subscribed {
+
+		// query for feed
+		// return
+	}
+
+	if !feedExists {
+		// download feed
+		// parse feed
+		// store in database
+		// start updater go routine
+	}
+
+	// add subscription for feed
+
+	return nil, nil
 }
