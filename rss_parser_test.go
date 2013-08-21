@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"testing"
+	"time"
 )
 
 func Test_RssParserHookup(t *testing.T) {
@@ -38,7 +39,7 @@ func testContent(name, content string, expF *Feed, expEs []*Entry, t *testing.T)
 		t.Error(fmt.Sprintf("Lenght of slices are not equal. Expected slice length: %d, while actual slice entries length: %d"))
 	}
 
-	for expected, i := range expEs {
+	for i, expected := range expEs {
 		actual := actEs[i]
 		cmpStr("entry Title", expected.Title, actual.Title, t)
 		cmpStr("entry Link", expected.Link, actual.Link, t)
@@ -57,7 +58,7 @@ func testContent(name, content string, expF *Feed, expEs []*Entry, t *testing.T)
 }
 
 func cmpStr(name, expected, actual string, t *testing.T) {
-	if v1 != v2 {
+	if actual != expected {
 		t.Error(fmt.Sprintf("Error with %s. Expected %q, received %q.", name, expected, actual))
 	}
 }
@@ -83,7 +84,6 @@ parseLoop:
 		case parsedFeed, feedOk := <-parser.feed:
 			if feedOk {
 				feed = &parsedFeed
-				feed.Url = feedUrl
 			} else {
 				feedOpen = false
 			}
