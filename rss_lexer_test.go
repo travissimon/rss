@@ -99,7 +99,7 @@ func Test_CData(t *testing.T) {
 	lexeme := l.nextItem()
 	testLexeme(lexeme, itemOpenTag, "tag", t)
 	lexeme = l.nextItem()
-	testLexeme(lexeme, itemText, "child & <b>text</b>", t)
+	testLexeme(lexeme, itemHtml, "child & <b>text</b>", t)
 	lexeme = l.nextItem()
 	testLexeme(lexeme, itemCloseTag, "tag", t)
 }

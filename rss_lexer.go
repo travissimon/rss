@@ -39,6 +39,7 @@ const (
 	itemAttributeName
 	itemAttributeValue
 	itemText
+	itemHtml
 )
 
 // for pretty printing
@@ -56,6 +57,7 @@ var itemName = map[lexItemType]string{
 	itemAttributeName:  "attribute name",
 	itemAttributeValue: "attribute value",
 	itemText:           "text",
+	itemHtml:           "html",
 }
 
 func (item lexItemType) String() string {
@@ -362,7 +364,7 @@ Loop:
 		l.accept("]")
 	}
 
-	l.emit(itemText)
+	l.emit(itemHtml)
 	l.acceptRun("]]>")
 	l.ignore()
 	return lexContentStart
