@@ -277,6 +277,16 @@ func lexTagStart(l *lexer) stateFn {
 				l.accept(">")
 				return lexTagContents
 			}
+		case '/':
+			l.accept("/")
+			if l.peek() == '>' {
+				l.acceptRun("/>")
+				l.ignore()
+				l.emit(itemSelfClosingTag)
+				return lexContentStart
+			} else {
+				l.backup()
+			}
 		default:
 			l.errorf("error parsing tag, unexpected symbol: %v", l.peek())
 			return nil
@@ -329,7 +339,7 @@ Loop:
 			l.errorf("lex attributes: did not find :=")
 			return nil
 		default:
-			fmt.Printf("Stuck in loop? %v\n", l.previewCurrent())
+			fmt.Printf("Stuck in loop? %c\n", l.previewCurrent())
 		}
 	}
 	l.acceptRun("=\"")

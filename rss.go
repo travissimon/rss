@@ -32,6 +32,7 @@ type Entry struct {
 	Guid        string
 	UpdatedDate time.Time
 	Summary     string
+	Encoded     string
 	Content     string
 	Source      string
 	Comments    string

@@ -45,10 +45,10 @@ func NewParser(name, input string) *RssParser {
 			"summary":     handleEntrySummary,
 			"description": handleEntrySummary,
 			"encoded":     handleEntryEncoded,
-			//"content":     handleEntryContent,
-			"source":    handleEntrySource,
-			"comments":  handleEntryComments,
-			"enclosure": handleEntryEnclosure,
+			"content":     handleEntryContent,
+			"source":      handleEntrySource,
+			"comments":    handleEntryComments,
+			"enclosure":   handleEntryEnclosure,
 		},
 	}
 }
@@ -65,9 +65,20 @@ func (r *RssParser) Parse() {
 type feedHandler func(l *lexer, feed *Feed)
 type entryHandler func(l *lexer, entry *Entry)
 
-func skipUntilType(l *lexer, typ lexItemType) {
-	for lexeme := l.nextItem(); lexeme.typ != typ; lexeme = l.nextItem() {
+func skipUntilTagClose(l *lexer) {
+	for lexeme := l.nextItem(); lexeme.typ != itemCloseTag && lexeme.typ != itemSelfClosingTag; lexeme = l.nextItem() {
 	}
+}
+
+func extractTextAndSkip(l *lexer) *lexeme {
+	var lexeme lexeme
+	for lexeme = l.nextItem(); lexeme.typ != itemText && lexeme.typ != itemHtml && lexeme.typ != itemCloseTag && lexeme.typ != itemSelfClosingTag; lexeme = l.nextItem() {
+	}
+	if lexeme.typ == itemText || lexeme.typ == itemHtml {
+		skipUntilTagClose(l)
+		return &lexeme
+	}
+	return nil
 }
 
 // Ignore everything (xml declarations, etc) before the openning feed tag
@@ -93,7 +104,7 @@ FeedLoop:
 		case itemOpenTag:
 			if lexeme.val == "item" {
 				r.feed <- feed
-				break FeedLoop
+				return
 			}
 		}
 
@@ -108,68 +119,88 @@ FeedLoop:
 
 // handleFeedTitle handles title tags for the feed secion
 func handleFeedTitle(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Title = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 // handleFeedTitle handles link tags for the feed secion
 func handleFeedLink(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Link = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleFeedSubtitle(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Subtitle = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleFeedCopyright(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Copyright = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleFeedAuthor(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Author = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleFeedPubDate(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	var err error
 	feed.PublishDate, err = parseDate(lexeme.val)
 	if err != nil {
 		fmt.Println(err)
 	}
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleFeedCategory(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Category = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleFeedGenerator(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Generator = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleFeedLogo(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Logo = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleFeedIcon(l *lexer, feed *Feed) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	feed.Icon = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 // Entry handlers
@@ -203,78 +234,106 @@ DocumentLoop:
 }
 
 func handleEntryTitle(l *lexer, entry *Entry) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	entry.Title = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleEntryLink(l *lexer, entry *Entry) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	entry.Link = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleEntrySubtitle(l *lexer, entry *Entry) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	entry.Subtitle = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleEntryGuid(l *lexer, entry *Entry) {
-	for lexeme := l.nextItem(); lexeme.typ != itemCloseTag; lexeme = l.nextItem() {
-		if lexeme.typ == itemText {
-			entry.Guid = lexeme.val
-		}
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
 	}
+	entry.Guid = lexeme.val
 }
 
 func handleEntryUpdatedDate(l *lexer, entry *Entry) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	var err error
 	entry.UpdatedDate, err = parseDate(lexeme.val)
 	if err != nil {
 		fmt.Println(err)
 	}
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleEntrySummary(l *lexer, entry *Entry) {
-	lexeme := l.nextItem()
-	entry.Summary = lexeme.val
-	skipUntilType(l, itemCloseTag)
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
+	if lexeme.typ == itemText {
+		entry.Summary = html.UnescapeString(lexeme.val)
+	} else if lexeme.typ == itemHtml {
+		entry.Summary = lexeme.val
+	}
 }
 
 func handleEntryEncoded(l *lexer, entry *Entry) {
-	lexeme := l.nextItem()
-	entry.Summary = html.UnescapeString(lexeme.val)
-	skipUntilType(l, itemCloseTag)
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
+	if lexeme.typ == itemText {
+		entry.Encoded = html.UnescapeString(lexeme.val)
+	} else if lexeme.typ == itemHtml {
+		entry.Encoded = lexeme.val
+	}
 }
 
-/*func handleEntryContent(l *lexer, entry *Entry) {
-	for lexeme := l.nextItem(); lexeme.typ != itemCloseTag; lexeme = l.nextItem() {
-		if lexeme.typ == itemText {
-			entry.Content = lexeme.val
-		}
+func handleEntryContent(l *lexer, entry *Entry) {
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
 	}
-}*/
+	if lexeme.typ == itemText {
+		entry.Content = html.UnescapeString(lexeme.val)
+	} else if lexeme.typ == itemHtml {
+		entry.Content = lexeme.val
+	}
+}
 
 func handleEntrySource(l *lexer, entry *Entry) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	entry.Source = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleEntryComments(l *lexer, entry *Entry) {
-	lexeme := l.nextItem()
+	lexeme := extractTextAndSkip(l)
+	if lexeme == nil {
+		return
+	}
 	entry.Comments = lexeme.val
-	skipUntilType(l, itemCloseTag)
 }
 
 func handleEntryThumbnail(l *lexer, entry *Entry) {
 	lexeme := l.nextItem() // should be url attribute name
 	lexeme = l.nextItem()  // attribute val
 	entry.Thumbnail = lexeme.val
-	skipUntilType(l, itemCloseTag)
+	skipUntilTagClose(l)
 }
 
 func handleEntryEnclosure(l *lexer, entry *Entry) {
