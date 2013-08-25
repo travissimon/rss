@@ -50,6 +50,8 @@ func Test_SuttersMill(t *testing.T) {
 `
 	e.Encoded = `<p><span style="color:#5a5a5a;"><em>Now that the unnecessary headers have been removed, it&#8217;s time for Phase 2: How can you limit dependencies on the internals of a class?</em></span> </p> <h1>Problem<br /> </h1> <h2>JG Questions<br /> </h2> <p>1. What does <span style="color:#2e74b5;">private</span> mean for a class member in C++? </p> <p>2. Why does changing the private members of a type cause a recompilation? </p> <h2>Guru Question<br /> </h2> <p>3. Below is how the header from the previous Item looks after the initial cleanup pass. What further <span style="color:#2e74b5;">#include</span>s could be removed if we made some suitable changes, and how? </p> ...
 `
+	e.Content = `<p><span style="color:#5a5a5a;"><em>Now that the unnecessary headers have been removed, it&#8217;s time for Phase 2: How can you limit dependencies on the internals of a class?</em></span> </p> <h1>Problem<br /> </h1> <h2>JG Questions<br /> </h2> <p>1. What does <span style="color:#2e74b5;">private</span> mean for a class member in C++? </p> <p>2. Why does changing the private members of a type cause a recompilation? </p> <h2>Guru Question<br /> </h2> <p>3. Below is how the header from the previous Item looks after the initial cleanup pass. What further <span style="color:#2e74b5;">#include</span>s could be removed if we made some suitable changes, and how? </p> ...
+`
 	e.Comments = "8"
 
 	entries := make([]*Entry, 0, 1)
