@@ -9,17 +9,16 @@ import (
 
 type RssParser struct {
 	lexer         *lexer
-	feed          chan Feed
-	entry         chan Entry
+	feed          *Feed
+	entries       []*Entry
 	feedHandlers  map[string]feedHandler
 	entryHandlers map[string]entryHandler
 }
 
 func NewParser(name, input string) *RssParser {
 	return &RssParser{
-		lexer: lex(name, input),
-		feed:  make(chan Feed, 1),
-		entry: make(chan Entry, 1),
+		lexer:   lex(name, input),
+		entries: make([]*Entry, 0, 20),
 		feedHandlers: map[string]feedHandler{
 			"title":          handleFeedTitle,
 			"link":           handleFeedLink,
@@ -53,13 +52,13 @@ func NewParser(name, input string) *RssParser {
 	}
 }
 
-func (r *RssParser) Parse() {
+func (r *RssParser) Parse() (feed *Feed, entries []*Entry, err error) {
 	// skip everything before the feed as unnecessary
 	r.skipUntilFeedTag()
 	r.populateFeed()
 	r.populateEntries()
-	close(r.feed)
-	close(r.entry)
+
+	return r.feed, r.entries, nil
 }
 
 type feedHandler func(l *lexer, feed *Feed)
@@ -93,7 +92,7 @@ func (r *RssParser) skipUntilFeedTag() {
 // {itemOpenTaq, "Title"}
 
 func (r *RssParser) populateFeed() {
-	feed := Feed{}
+	r.feed = new(Feed)
 FeedLoop:
 	for {
 		lexeme := r.lexer.nextItem()
@@ -103,7 +102,6 @@ FeedLoop:
 			break FeedLoop
 		case itemOpenTag:
 			if lexeme.val == "item" {
-				r.feed <- feed
 				return
 			}
 		}
@@ -113,7 +111,7 @@ FeedLoop:
 			continue
 		}
 
-		handler(r.lexer, &feed)
+		handler(r.lexer, r.feed)
 	}
 }
 
@@ -207,18 +205,18 @@ func handleFeedIcon(l *lexer, feed *Feed) {
 func (r *RssParser) populateEntries() {
 DocumentLoop:
 	for {
-		entry := Entry{}
+		entry := new(Entry)
 	EntryLoop:
 		for {
 			lexeme := r.lexer.nextItem()
 
 			switch lexeme.typ {
 			case itemEOF:
-				r.entry <- entry
+				r.entries = append(r.entries, entry)
 				break DocumentLoop
 			case itemOpenTag:
 				if lexeme.val == "item" {
-					r.entry <- entry
+					r.entries = append(r.entries, entry)
 					break EntryLoop
 				}
 			}
@@ -228,7 +226,7 @@ DocumentLoop:
 				continue
 			}
 
-			handler(r.lexer, &entry)
+			handler(r.lexer, entry)
 		}
 	}
 }

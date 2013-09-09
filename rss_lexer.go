@@ -73,22 +73,21 @@ type stateFn func(*lexer) stateFn
 
 // lexer holds the state of the scanner
 type lexer struct {
-	name    string      // name of the input (for error reporting)
-	input   string      // the string being scanned
-	state   stateFn     // next lexing function
-	pos     int         // current position in the input string
-	start   int         // start position of this item
-	width   int         // length of the last input rune
-	lexemes chan lexeme // channel of scanned lexemes
+	name   string  // name of the input (for error reporting)
+	input  string  // the string being scanned
+	state  stateFn // next lexing function
+	pos    int     // current position in the input string
+	start  int     // start position of this item
+	width  int     // length of the last input rune
+	buffer []lexeme
 }
 
 // create a new lexer
 func lex(name, input string) *lexer {
 	l := &lexer{
-		name:    name,
-		input:   input,
-		state:   lexContentStart,
-		lexemes: make(chan lexeme, 3),
+		name:  name,
+		input: input,
+		state: lexContentStart,
 	}
 	return l
 }
@@ -135,7 +134,7 @@ func (l *lexer) peekForward(amnt int) (r rune) {
 
 // emit an item back to the client
 func (l *lexer) emit(t lexItemType) {
-	l.lexemes <- lexeme{t, l.previewCurrent()}
+	l.buffer = append(l.buffer, lexeme{t, l.previewCurrent()})
 	l.start = l.pos
 }
 
@@ -194,27 +193,21 @@ func (l *lexer) lineNumber() int {
 // error returns an error token and terminates the scan by passing
 // back a nil pointer that will be the next state, terminating l.nextItem.
 func (l *lexer) errorf(format string, args ...interface{}) stateFn {
-	l.lexemes <- lexeme{itemError, fmt.Sprintf(format, args...)}
+	l.buffer = append(l.buffer, lexeme{itemError, fmt.Sprintf(format, args...)})
 	return nil
-}
-
-// run runs the state machine for the lexer.
-func (l *lexer) run() {
-	for l.state = lexContentStart; l.state != nil; {
-		l.state = l.state(l)
-	}
 }
 
 // nextItem returns the next item from the input
 func (l *lexer) nextItem() lexeme {
 	for {
-		select {
-		case lexeme := <-l.lexemes:
+		if len(l.buffer) > 0 {
+			lexeme := l.buffer[0]
+			l.buffer = l.buffer[1:]
 			if lexeme.typ == itemError {
 				panic("ERROR: " + lexeme.val + "\n")
 			}
 			return lexeme
-		default:
+		} else {
 			l.state = l.state(l)
 		}
 	}

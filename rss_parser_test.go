@@ -150,32 +150,10 @@ func cmpTime(name string, expected, actual time.Time, t *testing.T) {
 
 func parseFeed(name, content string, t *testing.T) (feed *Feed, entries []*Entry) {
 	parser := NewParser(name, content)
-	go parser.Parse()
-
-	entrySlice := make([]*Entry, 0, 20)
-	feedOpen, entryOpen := true, true
-parseLoop:
-	for {
-		if !feedOpen && !entryOpen {
-			break parseLoop
-		}
-		select {
-		case parsedFeed, feedOk := <-parser.feed:
-			if feedOk {
-				feed = &parsedFeed
-			} else {
-				feedOpen = false
-			}
-		case parsedEntry, entryOk := <-parser.entry:
-			if entryOk {
-				entrySlice = append(entrySlice, &parsedEntry)
-			} else {
-				entryOpen = false
-			}
-		}
+	feed, entries, err := parser.Parse()
+	if err != nil {
+		t.Error(err)
 	}
-
-	entries = entrySlice
 	return
 }
 

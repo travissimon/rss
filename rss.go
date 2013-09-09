@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+type FeedStub struct {
+	Id    int64
+	Title string
+}
+
 type Feed struct {
 	Id          int64
 	Url         string
@@ -71,6 +76,16 @@ func (rss *RssEngine) GetFeedsForUser(userId int64) (feeds []*Feed, err error) {
 	return
 }
 
+func (rss *RssEngine) GetFeedStubsForUser(userId int64) (feeds []*FeedStub, err error) {
+	feeds, err = rss.db.getFeedStubsForUser(userId)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return
+}
+
 // GetEntriesForFeed gets all entries for a feed.
 func (rss *RssEngine) GetEntriesForFeed(feedId int64) (entries []*Entry, err error) {
 	entries, err = rss.db.getEntriesByFeedId(feedId)
@@ -85,6 +100,8 @@ func (rss *RssEngine) GetEntriesForFeed(feedId int64) (entries []*Entry, err err
 func (rss *RssEngine) AddFeedForUser(userId int64, feedUrl string) (feed *Feed, entries []*Entry, err error) {
 	feedExists, subscribed := rss.db.getFeedStatusForUser(userId, feedUrl)
 
+	fmt.Printf("Adding %v, exists: %v, subscribed: %v\n", feedUrl, feedExists, subscribed)
+
 	if subscribed {
 		feed, err = rss.db.getFeedByUrl(feedUrl)
 		entries, err = rss.db.getEntriesByFeedId(feed.Id)
@@ -96,11 +113,14 @@ func (rss *RssEngine) AddFeedForUser(userId int64, feedUrl string) (feed *Feed, 
 	if !feedExists {
 		// download feed
 		contents, err := rss.downloadRssFile(feedUrl)
+		fmt.Printf("Contents: %s\n", contents[0:120])
 		if err != nil {
+			fmt.Printf("err: %v\n", err)
 			return nil, nil, err
 		}
 		// parse feed
 		feed, entries, err = rss.parseFeed(feedUrl, string(contents))
+		fmt.Printf("err: %v\nfeed: %v\nEntries: %v\n", err, feed, entries)
 		// store in database
 		if err != nil {
 			fmt.Printf("Error parsing %s: %s\n", feedUrl, err.Error())
@@ -108,6 +128,7 @@ func (rss *RssEngine) AddFeedForUser(userId int64, feedUrl string) (feed *Feed, 
 		}
 
 		feedId, err = rss.db.insertFeed(feed)
+		fmt.Printf("feedid: %v, err: %v\n", feedId, err)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -120,6 +141,7 @@ func (rss *RssEngine) AddFeedForUser(userId int64, feedUrl string) (feed *Feed, 
 	}
 
 	// add subscription for feed
+	fmt.Printf("Adding subscription for %v to feed %v\n", userId, feedId)
 	err = rss.AddSubscription(userId, feedId)
 	return
 }
@@ -144,32 +166,6 @@ func (rss *RssEngine) downloadRssFile(feedUrl string) (contents string, err erro
 
 func (rss *RssEngine) parseFeed(feedUrl, rssContents string) (feed *Feed, entries []*Entry, err error) {
 	parser := NewParser(feedUrl, rssContents)
-	go parser.Parse()
-
-	entrySlice := make([]*Entry, 0, 20)
-	feedOpen, entryOpen := true, true
-parseLoop:
-	for {
-		if !feedOpen && !entryOpen {
-			break parseLoop
-		}
-		select {
-		case parsedFeed, feedOk := <-parser.feed:
-			if feedOk {
-				feed = &parsedFeed
-				feed.Url = feedUrl
-			} else {
-				feedOpen = false
-			}
-		case parsedEntry, entryOk := <-parser.entry:
-			if entryOk {
-				entrySlice = append(entrySlice, &parsedEntry)
-			} else {
-				entryOpen = false
-			}
-		}
-	}
-
-	entries = entrySlice
+	feed, entries, err = parser.Parse()
 	return
 }

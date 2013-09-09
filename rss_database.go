@@ -14,6 +14,7 @@ type RssDatabase struct {
 	db                         *sql.DB
 	getAllFeedsStmt            *sql.Stmt
 	getFeedsByUserIdStmt       *sql.Stmt
+	getFeedStubsByUserIdStmt   *sql.Stmt
 	insertSubscriptionStmt     *sql.Stmt
 	insertFeedStmt             *sql.Stmt
 	getFeedByIdStmt            *sql.Stmt
@@ -40,9 +41,13 @@ func NewRssDatabase(database, username, password string) *RssDatabase {
 	rss.panicOnError(err)
 	rss.getAllFeedsStmt = getAll
 
-	getForUser, err := db.Prepare(getFeedsForUserId)
+	getForUser, err := db.Prepare(getFeedsForUserIdSQL)
 	rss.panicOnError(err)
 	rss.getFeedsByUserIdStmt = getForUser
+
+	getStubsForUser, err := db.Prepare(getFeedStubsForUserIdSQL)
+	rss.panicOnError(err)
+	rss.getFeedStubsByUserIdStmt = getStubsForUser
 
 	insSub, err := db.Prepare(insertSubscriptionSQL)
 	rss.panicOnError(err)
@@ -132,6 +137,28 @@ func (rss *RssDatabase) getFeedsForUser(userId int64) (feeds []*Feed, err error)
 			return nil, err
 		}
 		feeds = append(feeds, feed)
+	}
+	return feeds, nil
+}
+
+func (rss *RssDatabase) getFeedStubsForUser(userId int64) (feeds []*FeedStub, err error) {
+	rows, err := rss.getFeedStubsByUserIdStmt.Query(userId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	feeds = make([]*FeedStub, 0, 40)
+	for rows.Next() {
+		stub := new(FeedStub)
+		err = rows.Scan(
+			&stub.Id,
+			&stub.Title,
+		)
+		if err != nil {
+			return nil, err
+		}
+		feeds = append(feeds, stub)
 	}
 	return feeds, nil
 }
@@ -368,7 +395,7 @@ FROM rss.Feed
 WHERE Url = ? 
 `
 
-var getFeedsForUserId string = `
+var getFeedsForUserIdSQL string = `
 SELECT
   feed.Id,
   feed.Url,
@@ -381,6 +408,17 @@ SELECT
   feed.Category,
   feed.Logo,
   feed.Icon
+FROM rss.Subscription sub
+  INNER JOIN rss.Feed feed
+    ON sub.FeedId = feed.Id
+WHERE sub.UserId = ?
+ORDER BY feed.Title
+;`
+
+var getFeedStubsForUserIdSQL string = `
+SELECT
+  feed.Id,
+  feed.Title
 FROM rss.Subscription sub
   INNER JOIN rss.Feed feed
     ON sub.FeedId = feed.Id
